@@ -17,13 +17,17 @@
 
 #import <sys/sysctl.h>
 #import <netinet/in.h>
+#import <CoreTelephony/CTTelephonyNetworkInfo.h>
 
 #if TARGET_IPHONE_SIMULATOR
-    #if __IPHONE_OS_VERSION_MAX_ALLOWED < 110000 //iOS11，用数字不用宏定义的原因是低版本XCode不支持110000的宏定义
-        #include <net/route.h>
-    #else
-        #include "Route.h"
-    #endif
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 110000 //iOS11，用数字不用宏定义的原因是低版本XCode不支持110000的宏定义
+#include <net/route.h>
+#else
+
+#include "Route.h"
+#import "Reachability.h"
+
+#endif
 #else
 #include "Route.h"
 #endif /*the very same from google-code*/
@@ -36,8 +40,7 @@
 /*!
  * 获取当前设备ip地址
  */
-+ (NSString *)deviceIPAdress
-{
++ (NSString *)deviceIPAdress {
     NSString *address = @"";
     struct ifaddrs *interfaces = NULL;
     struct ifaddrs *temp_addr = NULL;
@@ -49,19 +52,18 @@
 
         temp_addr = interfaces;
         while (temp_addr != NULL) {
-            NSLog(@"ifa_name===%@",[NSString stringWithUTF8String:temp_addr->ifa_name]);
+            NSLog(@"ifa_name===%@", [NSString stringWithUTF8String:temp_addr->ifa_name]);
             // Check if interface is en0 which is the wifi connection on the iPhone
-            if ([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"] || [[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"pdp_ip0"])
-            {
+            if ([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"] || [[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"pdp_ip0"]) {
                 //如果是IPV4地址，直接转化
-                if (temp_addr->ifa_addr->sa_family == AF_INET){
+                if (temp_addr->ifa_addr->sa_family == AF_INET) {
                     // Get NSString from C String
-                    address = [self formatIPV4Address:((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr];
+                    address = [self formatIPV4Address:((struct sockaddr_in *) temp_addr->ifa_addr)->sin_addr];
                 }
-                
-                //如果是IPV6地址
-                else if (temp_addr->ifa_addr->sa_family == AF_INET6){
-                    address = [self formatIPV6Address:((struct sockaddr_in6 *)temp_addr->ifa_addr)->sin6_addr];
+
+                    //如果是IPV6地址
+                else if (temp_addr->ifa_addr->sa_family == AF_INET6) {
+                    address = [self formatIPV6Address:((struct sockaddr_in6 *) temp_addr->ifa_addr)->sin6_addr];
                     if (address && ![address isEqualToString:@""] && ![address.uppercaseString hasPrefix:@"FE80"]) break;
                 }
             }
@@ -83,30 +85,29 @@
 /*!
  * 获取当前设备网关地址
  */
-+ (NSString *)getGatewayIPAddress{
++ (NSString *)getGatewayIPAddress {
     NSString *address = nil;
-    
+
     NSString *gatewayIPV4 = [self getGatewayIPV4Address];
     NSString *gatewayIPV6 = [self getGatewayIPV6Address];
-    
+
     if (gatewayIPV6 != nil) {
         address = gatewayIPV6;
     } else {
         address = gatewayIPV4;
     }
-    
+
     return address;
 }
 
 
-+ (NSString *)getGatewayIPV4Address
-{
++ (NSString *)getGatewayIPV4Address {
 
     NSString *address = nil;
 
     /* net.route.0.inet.flags.gateway */
     int mib[] = {CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_GATEWAY};
-    
+
     size_t l;
     char *buf, *p;
     struct rt_msghdr *rt;
@@ -125,31 +126,31 @@
         }
 
         for (p = buf; p < buf + l; p += rt->rtm_msglen) {
-            rt = (struct rt_msghdr *)p;
-            sa = (struct sockaddr *)(rt + 1);
+            rt = (struct rt_msghdr *) p;
+            sa = (struct sockaddr *) (rt + 1);
             for (i = 0; i < RTAX_MAX; i++) {
                 if (rt->rtm_addrs & (1 << i)) {
                     sa_tab[i] = sa;
-                    sa = (struct sockaddr *)((char *)sa + ROUNDUP(sa->sa_len));
+                    sa = (struct sockaddr *) ((char *) sa + ROUNDUP(sa->sa_len));
                 } else {
                     sa_tab[i] = NULL;
                 }
             }
 
             if (((rt->rtm_addrs & (RTA_DST | RTA_GATEWAY)) == (RTA_DST | RTA_GATEWAY)) &&
-                sa_tab[RTAX_DST]->sa_family == AF_INET &&
-                sa_tab[RTAX_GATEWAY]->sa_family == AF_INET) {
+                    sa_tab[RTAX_DST]->sa_family == AF_INET &&
+                    sa_tab[RTAX_GATEWAY]->sa_family == AF_INET) {
                 unsigned char octet[4] = {0, 0, 0, 0};
                 int i;
                 for (i = 0; i < 4; i++) {
-                    octet[i] = (((struct sockaddr_in *)(sa_tab[RTAX_GATEWAY]))->sin_addr.s_addr >>
-                                (i * 8)) &
-                               0xFF;
+                    octet[i] = (((struct sockaddr_in *) (sa_tab[RTAX_GATEWAY]))->sin_addr.s_addr >>
+                                                                                                 (i * 8)) &
+                            0xFF;
                 }
-                if (((struct sockaddr_in *)sa_tab[RTAX_DST])->sin_addr.s_addr == 0) {
+                if (((struct sockaddr_in *) sa_tab[RTAX_DST])->sin_addr.s_addr == 0) {
                     in_addr_t addr =
-                        ((struct sockaddr_in *)(sa_tab[RTAX_GATEWAY]))->sin_addr.s_addr;
-                    address = [self formatIPV4Address:*((struct in_addr *)&addr)];
+                            ((struct sockaddr_in *) (sa_tab[RTAX_GATEWAY]))->sin_addr.s_addr;
+                    address = [self formatIPV4Address:*((struct in_addr *) &addr)];
                     NSLog(@"IPV4address%@", address);
                     break;
                 }
@@ -157,59 +158,57 @@
         }
         free(buf);
     }
-    
+
     return address;
 }
 
-+ (NSString *)getGatewayIPV6Address
-{
-    
++ (NSString *)getGatewayIPV6Address {
+
     NSString *address = nil;
-    
+
     /* net.route.0.inet.flags.gateway */
     int mib[] = {CTL_NET, PF_ROUTE, 0, AF_INET6, NET_RT_FLAGS, RTF_GATEWAY};
-    
+
     size_t l;
     char *buf, *p;
     struct rt_msghdr *rt;
     struct sockaddr_in6 *sa;
     struct sockaddr_in6 *sa_tab[RTAX_MAX];
     int i;
-    
+
     if (sysctl(mib, sizeof(mib) / sizeof(int), 0, &l, 0, 0) < 0) {
         address = @"192.168.0.1";
     }
-    
+
     if (l > 0) {
         buf = malloc(l);
         if (sysctl(mib, sizeof(mib) / sizeof(int), buf, &l, 0, 0) < 0) {
             address = @"192.168.0.1";
         }
-        
+
         for (p = buf; p < buf + l; p += rt->rtm_msglen) {
-            rt = (struct rt_msghdr *)p;
-            sa = (struct sockaddr_in6 *)(rt + 1);
+            rt = (struct rt_msghdr *) p;
+            sa = (struct sockaddr_in6 *) (rt + 1);
             for (i = 0; i < RTAX_MAX; i++) {
                 if (rt->rtm_addrs & (1 << i)) {
                     sa_tab[i] = sa;
-                    sa = (struct sockaddr_in6 *)((char *)sa + sa->sin6_len);
+                    sa = (struct sockaddr_in6 *) ((char *) sa + sa->sin6_len);
                 } else {
                     sa_tab[i] = NULL;
                 }
             }
 
-            if( ((rt->rtm_addrs & (RTA_DST|RTA_GATEWAY)) == (RTA_DST|RTA_GATEWAY))
-               && sa_tab[RTAX_DST]->sin6_family == AF_INET6
-               && sa_tab[RTAX_GATEWAY]->sin6_family == AF_INET6)
-            {
-                address = [self formatIPV6Address:((struct sockaddr_in6 *)(sa_tab[RTAX_GATEWAY]))->sin6_addr];
+            if (((rt->rtm_addrs & (RTA_DST | RTA_GATEWAY)) == (RTA_DST | RTA_GATEWAY))
+                    && sa_tab[RTAX_DST]->sin6_family == AF_INET6
+                    && sa_tab[RTAX_GATEWAY]->sin6_family == AF_INET6) {
+                address = [self formatIPV6Address:((struct sockaddr_in6 *) (sa_tab[RTAX_GATEWAY]))->sin6_addr];
                 NSLog(@"IPV6address%@", address);
                 break;
             }
         }
         free(buf);
     }
-    
+
     return address;
 }
 
@@ -217,13 +216,13 @@
 /*!
  * 通过hostname获取ip列表 DNS解析地址
  */
-+ (NSArray *)getDNSsWithDormain:(NSString *)hostName{
++ (NSArray *)getDNSsWithDormain:(NSString *)hostName {
     NSMutableArray *result = [[NSMutableArray alloc] init];
     NSArray *IPV4DNSs = [self getIPV4DNSWithHostName:hostName];
     if (IPV4DNSs && IPV4DNSs.count > 0) {
         [result addObjectsFromArray:IPV4DNSs];
     }
-    
+
     //由于在IPV6环境下不能用IPV4的地址进行连接监测
     //所以只返回IPV6的服务器DNS地址
     NSArray *IPV6DNSs = [self getIPV6DNSWithHostName:hostName];
@@ -231,13 +230,12 @@
         [result removeAllObjects];
         [result addObjectsFromArray:IPV6DNSs];
     }
-    
+
     return [NSArray arrayWithArray:result];
 }
 
 
-+ (NSArray *)getIPV4DNSWithHostName:(NSString *)hostName
-{
++ (NSArray *)getIPV4DNSWithHostName:(NSString *)hostName {
     const char *hostN = [hostName UTF8String];
     struct hostent *phot;
 
@@ -264,11 +262,10 @@
 }
 
 
-+ (NSArray *)getIPV6DNSWithHostName:(NSString *)hostName
-{
++ (NSArray *)getIPV6DNSWithHostName:(NSString *)hostName {
     const char *hostN = [hostName UTF8String];
     struct hostent *phot;
-    
+
     @try {
         /**
          * 只有在IPV6的网络下才会有返回值
@@ -277,17 +274,17 @@
     } @catch (NSException *exception) {
         return nil;
     }
-    
+
     NSMutableArray *result = [[NSMutableArray alloc] init];
     int j = 0;
     while (phot && phot->h_addr_list && phot->h_addr_list[j]) {
         struct in6_addr ip6_addr;
         memcpy(&ip6_addr, phot->h_addr_list[j], sizeof(struct in6_addr));
-        NSString *strIPAddress = [self formatIPV6Address: ip6_addr];
+        NSString *strIPAddress = [self formatIPV6Address:ip6_addr];
         [result addObject:strIPAddress];
         j++;
     }
-    
+
     return [NSArray arrayWithArray:result];
 }
 
@@ -295,15 +292,15 @@
 /*!
  * 获取当前网络DNS服务器地址
  */
-+(NSArray *)outPutDNSServers{
++ (NSArray *)outPutDNSServers {
     res_state res = malloc(sizeof(struct __res_state));
     int result = res_ninit(res);
-    
+
     NSMutableArray *servers = [[NSMutableArray alloc] init];
     if (result == 0) {
         union res_9_sockaddr_union *addr_union = malloc(res->nscount * sizeof(union res_9_sockaddr_union));
         res_getservers(res, addr_union, res->nscount);
-        
+
         for (int i = 0; i < res->nscount; i++) {
             if (addr_union[i].sin.sin_family == AF_INET) {
                 char ip[INET_ADDRSTRLEN];
@@ -324,81 +321,133 @@
     }
     res_nclose(res);
     free(res);
-    
+
     return [NSArray arrayWithArray:servers];
 }
 
++ (NetworkStatus)getNetworkTypeInner {
+    Reachability *reachability = [Reachability reachabilityWithHostName:@"www.baidu.com"];
+    return [reachability currentReachabilityStatus];
+}
+
++ (NETWORK_TYPE)getNetworkType {
+    NetworkStatus netStatus = [self getNetworkTypeInner];
+    NETWORK_TYPE networkType = NETWORK_TYPE_NONE;
+
+    switch (netStatus) {
+        case ReachableViaWiFi:
+            networkType = NETWORK_TYPE_WIFI;
+            break;
+
+        case ReachableViaWWAN: {
+            // 判断蜂窝移动类型
+            CTTelephonyNetworkInfo *networkInfo = [[CTTelephonyNetworkInfo alloc] init];
+            if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyGPRS]) {
+                networkType = NETWORK_TYPE_2G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyEdge]) {
+                networkType = NETWORK_TYPE_2G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyWCDMA]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyHSDPA]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyHSUPA]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyCDMA1x]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyCDMAEVDORev0]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyCDMAEVDORevA]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyCDMAEVDORevB]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyeHRPD]) {
+                networkType = NETWORK_TYPE_3G;
+            } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyLTE]) {
+                networkType = NETWORK_TYPE_4G;
+            }
+        }
+            break;
+
+        case NotReachable:
+            networkType = NETWORK_TYPE_NONE;
+            break;
+    }
+
+    return networkType;
+}
 
 /*!
  * 获取当前网络类型
  * 通过statusBar的网络subview获取具体类型
  */
-+ (NETWORK_TYPE)getNetworkTypeFromStatusBar
-{
-    UIApplication *app = [UIApplication sharedApplication];
-    NETWORK_TYPE nettype = NETWORK_TYPE_NONE;
-    //iOS11
-    if ([[app valueForKeyPath:@"_statusBar"] isKindOfClass:NSClassFromString(@"UIStatusBar_Modern")]) {
-        NSArray *views = [[[[app valueForKeyPath:@"statusBar"] valueForKeyPath:@"statusBar"] valueForKeyPath:@"foregroundView"] subviews];
-        for (UIView *view in views) {
-            for (id child in view.subviews) {
-                //wifi
-                if ([child isKindOfClass:NSClassFromString(@"_UIStatusBarWifiSignalView")]) {
-                    nettype = NETWORK_TYPE_WIFI;
-                }
-                //2G 3G 4G
-                if ([child isKindOfClass:NSClassFromString(@"_UIStatusBarStringView")]) {
-                    if ([[child valueForKey:@"_originalText"] containsString:@"2G"]) {
-                        nettype = NETWORK_TYPE_2G;
-                    } else if ([[child valueForKey:@"_originalText"] containsString:@"3G"]) {
-                        nettype = NETWORK_TYPE_3G;
-                    } else if ([[child valueForKey:@"_originalText"] containsString:@"4G"]) {
-                        nettype = NETWORK_TYPE_4G;
-                    }
-                }
-            }
-        }
-    } else {
-        NSArray *subviews = [[[[UIApplication sharedApplication] valueForKey:@"statusBar"]
-                              valueForKey:@"foregroundView"] subviews];
-        NSNumber *dataNetworkItemView = nil;
-        for (id subview in subviews) {
-            if ([subview isKindOfClass:[NSClassFromString(@"UIStatusBarDataNetworkItemView") class]]) {
-                dataNetworkItemView = subview;
-                break;
-            }
-        }
-        NSNumber *num = [dataNetworkItemView valueForKey:@"dataNetworkType"];
-        nettype = [num intValue];
-    }
-   return nettype;
++ (NETWORK_TYPE)getNetworkTypeFromStatusBar {
+    return [self getNetworkType];
+
+
+//    UIApplication *app = [UIApplication sharedApplication];
+//    NETWORK_TYPE nettype = NETWORK_TYPE_NONE;
+//    //iOS11
+//    if ([[app valueForKeyPath:@"_statusBar"] isKindOfClass:NSClassFromString(@"UIStatusBar_Modern")]) {
+//        NSArray *views = [[[[app valueForKeyPath:@"statusBar"] valueForKeyPath:@"statusBar"] valueForKeyPath:@"foregroundView"] subviews];
+//        for (UIView *view in views) {
+//            for (id child in view.subviews) {
+//                //wifi
+//                if ([child isKindOfClass:NSClassFromString(@"_UIStatusBarWifiSignalView")]) {
+//                    nettype = NETWORK_TYPE_WIFI;
+//                }
+//                //2G 3G 4G
+//                if ([child isKindOfClass:NSClassFromString(@"_UIStatusBarStringView")]) {
+//                    if ([[child valueForKey:@"_originalText"] containsString:@"2G"]) {
+//                        nettype = NETWORK_TYPE_2G;
+//                    } else if ([[child valueForKey:@"_originalText"] containsString:@"3G"]) {
+//                        nettype = NETWORK_TYPE_3G;
+//                    } else if ([[child valueForKey:@"_originalText"] containsString:@"4G"]) {
+//                        nettype = NETWORK_TYPE_4G;
+//                    }
+//                }
+//            }
+//        }
+//    } else {
+//        NSArray *subviews = [[[[UIApplication sharedApplication] valueForKey:@"statusBar"]
+//                              valueForKey:@"foregroundView"] subviews];
+//        NSNumber *dataNetworkItemView = nil;
+//        for (id subview in subviews) {
+//            if ([subview isKindOfClass:[NSClassFromString(@"UIStatusBarDataNetworkItemView") class]]) {
+//                dataNetworkItemView = subview;
+//                break;
+//            }
+//        }
+//        NSNumber *num = [dataNetworkItemView valueForKey:@"dataNetworkType"];
+//        nettype = [num intValue];
+//    }
+//   return nettype;
 }
 
 
-+(NSString *)formatIPV6Address:(struct in6_addr)ipv6Addr{
++ (NSString *)formatIPV6Address:(struct in6_addr)ipv6Addr {
     NSString *address = nil;
-    
+
     char dstStr[INET6_ADDRSTRLEN];
     char srcStr[INET6_ADDRSTRLEN];
     memcpy(srcStr, &ipv6Addr, sizeof(struct in6_addr));
-    if(inet_ntop(AF_INET6, srcStr, dstStr, INET6_ADDRSTRLEN) != NULL){
+    if (inet_ntop(AF_INET6, srcStr, dstStr, INET6_ADDRSTRLEN) != NULL) {
         address = [NSString stringWithUTF8String:dstStr];
     }
-    
+
     return address;
 }
 
 
-+(NSString *)formatIPV4Address:(struct in_addr)ipv4Addr{
++ (NSString *)formatIPV4Address:(struct in_addr)ipv4Addr {
     NSString *address = nil;
-    
+
     char dstStr[INET_ADDRSTRLEN];
     char srcStr[INET_ADDRSTRLEN];
     memcpy(srcStr, &ipv4Addr, sizeof(struct in_addr));
-    if(inet_ntop(AF_INET, srcStr, dstStr, INET_ADDRSTRLEN) != NULL){
+    if (inet_ntop(AF_INET, srcStr, dstStr, INET_ADDRSTRLEN) != NULL) {
         address = [NSString stringWithUTF8String:dstStr];
     }
-    
+
     return address;
 }
 

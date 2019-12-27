@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import "Reachability.h"
 
 @interface LDNetGetAddress : NSObject
 
@@ -44,6 +45,10 @@ typedef enum {
  */
 + (NSArray *)outPutDNSServers;
 
+
++ (NetworkStatus)getNetworkTypeInner;
+
++ (NETWORK_TYPE)getNetworkType;
 
 /*!
  * 获取当前网络类型

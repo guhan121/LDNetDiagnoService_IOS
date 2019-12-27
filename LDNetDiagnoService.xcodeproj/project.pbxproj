@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		25E3C39F23B60786009682ED /* Reachability.m in Sources */ = {isa = PBXBuildFile; fileRef = 25E3C39D23B60785009682ED /* Reachability.m */; };
 		2942AC941CEC3C650028B3C7 /* libLDNetDiagnoService.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2942AC8A1CEC3C650028B3C7 /* libLDNetDiagnoService.framework */; };
 		2942AC9B1CEC3C650028B3C7 /* libLDNetDiagnoServiceTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 2942AC9A1CEC3C650028B3C7 /* libLDNetDiagnoServiceTests.m */; };
 		2942AC9F1CEC3C650028B3C7 /* libLDNetDiagnoService.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2942AC8A1CEC3C650028B3C7 /* libLDNetDiagnoService.framework */; };
@@ -82,6 +83,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		25E3C39D23B60785009682ED /* Reachability.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Reachability.m; sourceTree = "<group>"; };
+		25E3C39E23B60786009682ED /* Reachability.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Reachability.h; sourceTree = "<group>"; };
 		2942AC8A1CEC3C650028B3C7 /* libLDNetDiagnoService.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = libLDNetDiagnoService.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2942AC8E1CEC3C650028B3C7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2942AC931CEC3C650028B3C7 /* libLDNetDiagnoServiceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = libLDNetDiagnoServiceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -243,6 +246,8 @@
 		629AF70A1A012630001CBB3E /* LDNetDiagnoService */ = {
 			isa = PBXGroup;
 			children = (
+				25E3C39E23B60786009682ED /* Reachability.h */,
+				25E3C39D23B60785009682ED /* Reachability.m */,
 				629AF70B1A012630001CBB3E /* LDNetDiagnoService.h */,
 				629AF70C1A012630001CBB3E /* LDNetDiagnoService.m */,
 				629AF70D1A012630001CBB3E /* LDNetPing.h */,
@@ -470,6 +475,7 @@
 			files = (
 				B0535F411CF2E9F100A1E7D6 /* AppDelegate.m in Sources */,
 				B0535F421CF2E9F100A1E7D6 /* ViewController.m in Sources */,
+				25E3C39F23B60786009682ED /* Reachability.m in Sources */,
 				B0535F431CF2E9F100A1E7D6 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
