@@ -364,6 +364,8 @@
                 networkType = NETWORK_TYPE_3G;
             } else if ([networkInfo.currentRadioAccessTechnology isEqualToString:CTRadioAccessTechnologyLTE]) {
                 networkType = NETWORK_TYPE_4G;
+            }else{
+                networkType = NETWORK_TYPE_5G;  //假装是5g
             }
         }
             break;
